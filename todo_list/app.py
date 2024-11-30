@@ -1,13 +1,21 @@
 from http import HTTPStatus
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from .schemas import Message, User, UserDB, UserResponse, UsersResponse
+from todo_list.database import get_session
+from todo_list.models import User
+from todo_list.schemas import (
+    Message,
+    UserDB,
+    UserResponse,
+    UserSchema,
+    UsersResponse,
+)
+from todo_list.security import get_password_hash
 
 app = FastAPI()
-
-
-database = []
 
 
 @app.get('/', response_model=Message)
@@ -18,9 +26,34 @@ def index():
 @app.post(
     '/users', status_code=HTTPStatus.CREATED, response_model=UserResponse
 )
-def create_user(user: User):
-    user_db = UserDB(**user.model_dump(), id=len(database) + 1)
-    database.append(user_db)
+def create_user(user: UserSchema, session: Session = Depends(get_session)):
+    user_db = session.scalar(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    )
+
+    if user_db:
+        if user_db.username == user.username:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail='Username already exists',
+            )
+        elif user_db.email == user.email:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail='Email already exists',
+            )
+
+    user_db = User(
+        username=user.username,
+        password=get_password_hash(user.password),
+        email=user.email,
+    )
+
+    session.add(user_db)
+    session.commit()
+    session.refresh(user_db)
 
     return user_db
 
@@ -41,7 +74,7 @@ def user(id: int):
 
 
 @app.put('/users/{id}', response_model=UserResponse)
-def update_user(id: int, user: User):
+def update_user(id: int, user: UserSchema):
     if id > len(database) or id < 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'

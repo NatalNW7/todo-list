@@ -5,7 +5,7 @@ class Message(BaseModel):
     message: str
 
 
-class User(BaseModel):
+class UserSchema(BaseModel):
     username: str
     email: EmailStr
     password: str
@@ -17,7 +17,7 @@ class UserResponse(BaseModel):
     email: EmailStr
 
 
-class UserDB(User):
+class UserDB(UserSchema):
     id: int
 
 
