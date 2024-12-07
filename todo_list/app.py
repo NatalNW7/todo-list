@@ -2,13 +2,13 @@ from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from todo_list.database import get_session
 from todo_list.models import User
 from todo_list.schemas import (
     Message,
-    UserDB,
     UserResponse,
     UserSchema,
     UsersResponse,
@@ -59,40 +59,59 @@ def create_user(user: UserSchema, session: Session = Depends(get_session)):
 
 
 @app.get('/users', response_model=UsersResponse)
-def users():
-    return {'users': database}
+def users(
+    skip: int = 0, limit: int = 100, session: Session = Depends(get_session)
+):
+    users = session.scalars(select(User).offset(skip).limit(limit)).all()
+    return {'users': users}
 
 
 @app.get('/users/{id}', response_model=UserResponse)
-def user(id: int):
-    if id > len(database) or id < 1:
+def user(id: int, session: Session = Depends(get_session)):
+    user = session.scalar(select(User).where(User.id == id))
+    if not user:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
         )
 
-    return database[id - 1]
+    return user
 
 
 @app.put('/users/{id}', response_model=UserResponse)
-def update_user(id: int, user: UserSchema):
-    if id > len(database) or id < 1:
+def update_user(
+    id: int, user: UserSchema, session: Session = Depends(get_session)
+):
+    user_db = session.scalar(select(User).where(User.id == id))
+    if not user_db:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
         )
 
-    user_db = UserDB(**user.model_dump(), id=id)
-    database[id - 1] = user_db
+    try:
+        user_db.username = user.username
+        user_db.password = user.password
+        user_db.email = user.email
+        session.commit()
+        session.refresh(user_db)
 
-    return user_db
+        return user_db
+    except IntegrityError:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail='Username or Email already exists',
+        )
 
 
 @app.delete('/users/{id}', response_model=Message)
-def delete_user(id: int):
-    if id > len(database) or id < 1:
+def delete_user(id: int, session: Session = Depends(get_session)):
+    user_db = session.scalar(select(User).where(User.id == id))
+
+    if not user_db:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
         )
 
-    del database[id - 1]
+    session.delete(user_db)
+    session.commit()
 
     return {'message': 'User deleted'}

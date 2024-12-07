@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from todo_list.app import app
 from todo_list.database import get_session
-from todo_list.models import table_registry
+from todo_list.models import User, table_registry
 
 
 @pytest.fixture
@@ -56,3 +56,17 @@ def _mock_db_time(*, model, time=datetime(2024, 12, 11)):
 @pytest.fixture
 def mock_db_time():
     return _mock_db_time
+
+
+@pytest.fixture
+def user(session):
+    user = User(
+        username='Ronaldo',
+        email='ronaldo@fenomeno.com.br',
+        password='GolDeCoberturaNoSan7os',
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return user
