@@ -13,6 +13,7 @@ from todo_list.schemas import (
 from todo_list.security import (
     check_password,
     create_access_token,
+    get_current_user,
 )
 
 router = APIRouter(prefix='/auth', tags=['auth'])
@@ -40,3 +41,10 @@ def login(
     access_token = create_access_token(data={'sub': user.email})
 
     return {'access_token': access_token, 'token_type': 'bearer'}
+
+
+@router.post('/refresh-token', response_model=Token)
+def refresh_token(user: User = Depends(get_current_user)):
+    new_token = create_access_token(data={'sub': user.email})
+
+    return {'access_token': new_token, 'token_type': 'bearer'}

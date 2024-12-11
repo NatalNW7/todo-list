@@ -1,6 +1,6 @@
 from jwt import decode
 
-from todo_list.security import create_access_token, settings, get_current_user
+from todo_list.security import create_access_token, settings
 
 
 def test_jwt():
