@@ -2,7 +2,7 @@ from dataclasses import asdict
 
 from sqlalchemy import select
 
-from todo_list.models import User
+from todo_list.models import Todo, User
 
 
 def test_create_user(session, mock_db_time):
@@ -22,4 +22,19 @@ def test_create_user(session, mock_db_time):
         'email': new_user.email,
         'created_at': time,
         'updated_at': time,
+        'todos': [],
     }
+
+
+def test_create_todo(session, user):
+    todo = Todo(
+        title='Test Todo', description='Test', state='draft', user_id=user.id
+    )
+
+    session.add(todo)
+    session.commit()
+    session.refresh(todo)
+
+    user = session.scalar(select(User).where(User.id == user.id))
+
+    assert todo in user.todos
