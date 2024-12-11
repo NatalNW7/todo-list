@@ -7,3 +7,6 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORIHTM: str
+    EXPIRATION_TIME: int

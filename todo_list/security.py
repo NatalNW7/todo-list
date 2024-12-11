@@ -12,22 +12,23 @@ from zoneinfo import ZoneInfo
 from todo_list.database import get_session
 from todo_list.models import User
 from todo_list.schemas import TokenData
+from todo_list.settings import Settings
 
-SECRET_KEY = 'TESTE'
-ALGORIHTM = 'HS256'
-EXPIRATION_TIME = 30
+settings = Settings()
 pwd_context = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(tz=ZoneInfo('UTC')) + timedelta(
-        minutes=EXPIRATION_TIME
+        minutes=settings.EXPIRATION_TIME
     )
 
     to_encode.update({'exp': expire})
-    encode_jwt = encode(to_encode, SECRET_KEY, algorithm=ALGORIHTM)
+    encode_jwt = encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORIHTM
+    )
 
     return encode_jwt
 
@@ -51,7 +52,9 @@ def get_current_user(
     )
 
     try:
-        payload = decode(token, SECRET_KEY, algorithms=[ALGORIHTM])
+        payload = decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORIHTM]
+        )
         username = payload.get('sub')
 
         if not username:
